@@ -1,44 +1,26 @@
-ARG KEYCLOAK_VERSION=19.0.1
 
-FROM docker.io/maven:3.8.6-jdk-11 as mvn_builder
-COPY . /tmp
-RUN cd /tmp && mvn clean install
+FROM quay.io/keycloak/keycloak:latest as builder
 
-FROM quay.io/keycloak/keycloak:${KEYCLOAK_VERSION} as builder
-COPY --from=mvn_builder /tmp/target/*.jar /opt/keycloak/providers/
-COPY --from=mvn_builder /tmp/target/*.jar /opt/keycloak/deployments/
+# Enable health and metrics support
+ENV KC_HEALTH_ENABLED=true
+ENV KC_METRICS_ENABLED=true
 
-COPY idps/wechat-mobile/keycloak-services-social-weixin.jar \
-    /opt/keycloak/providers/
-COPY idps/wechat-mobile/templates/realm-identity-provider-weixin-ext.html \
-    /opt/keycloak/themes/base/admin/resources/partials
-COPY idps/wechat-mobile/templates/realm-identity-provider-weixin.html \
-    /opt/keycloak/themes/base/admin/resources/partials
+# Configure a database vendor
+ENV KC_DB=postgres
 
-COPY idps/wecom/keycloak-services-social-wechat-work.jar \
-    /opt/keycloak/providers/
-COPY idps/wecom/templates/realm-identity-provider-wechat-work.html \
-    /opt/keycloak/themes/base/admin/resources/partials
-COPY idps/wecom/templates/realm-identity-provider-wechat-work-ext.html \
-    /opt/keycloak/themes/base/admin/resources/partials
+WORKDIR /opt/keycloak
+# for demonstration purposes only, please make sure to use proper certificates in production instead
+RUN keytool -genkeypair -storepass password -storetype PKCS12 -keyalg RSA -keysize 2048 -dname "CN=server" -alias server -ext "SAN:c=DNS:localhost,IP:127.0.0.1" -keystore conf/server.keystore
+RUN /opt/keycloak/bin/kc.sh build
 
+FROM quay.io/keycloak/keycloak:latest
+COPY --from=builder /opt/keycloak/ /opt/keycloak/
 COPY themes/. /opt/keycloak/themes
 
-#COPY  temp/* /opt/keycloak/themes/base/admin/resources/partials
-#COPY  ui/font_iconfont /opt/keycloak/themes/keycloak/common/resources/lib/font_iconfont
-#COPY  ui/theme.properties /opt/keycloak/themes/keycloak/login/
-
-ENV KC_HOSTNAME_STRICT=false
-ENV KC_HOSTNAME_STRICT_HTTPS=false
-ENV KC_HTTP_ENABLED=true
-
-USER 1000
-
-RUN /opt/keycloak/bin/kc.sh build --health-enabled=true
-
-FROM quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
-COPY --from=builder /opt/keycloak/ /opt/keycloak/
-WORKDIR /opt/keycloak
-
-ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start-dev", "--hostname-strict=false", "--http-port=$PORT", "--proxy=passthrough", "--db=postgres", "--db-url=$DB_URL", "--db-username=$DB_USERNAME", "--db-password=$DB_PASSWORD", "--features=\"preview,scripts\""]
-
+# change these values to point to a running postgres instance
+ENV KC_DB=d7n5ufjnv5a2q5
+ENV KC_DB_URL=ec2-52-205-45-222.compute-1.amazonaws.com
+ENV KC_DB_USERNAME=uikjbptwbmbxsk
+ENV KC_DB_PASSWORD=e8ecc8b32fe9f0f4667b20c5923ebeed8f151581b32f8ece01ed70f46db73e74
+ENV KC_HOSTNAME=localhost
+ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
