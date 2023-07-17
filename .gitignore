@@ -1,4 +1,4 @@
 *~
 .idea
 target
-node_modules
+themes/newo/account/resources/build/node_modules
