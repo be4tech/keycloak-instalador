@@ -1,4 +1,4 @@
-ARG KEYCLOAK_VERSION=21.1.1
+ARG KEYCLOAK_VERSION=19.0.1
 
 FROM docker.io/maven:3.8.6-jdk-11 as mvn_builder
 COPY . /tmp
@@ -22,6 +22,7 @@ COPY idps/wecom/templates/realm-identity-provider-wechat-work.html \
 COPY idps/wecom/templates/realm-identity-provider-wechat-work-ext.html \
     /opt/keycloak/themes/base/admin/resources/partials
 
+COPY themes/. /opt/keycloak/themes
 
 #COPY  temp/* /opt/keycloak/themes/base/admin/resources/partials
 #COPY  ui/font_iconfont /opt/keycloak/themes/keycloak/common/resources/lib/font_iconfont
